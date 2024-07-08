@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import StarRating from "./StarRating";
 
 const API_KEY = import.meta.env.VITE_OMDB_API_KEY;
-const OMDB_URL = `http://www.omdbapi.com/?&apikey=${API_KEY}`;
+const OMDB_URL = `https://www.omdbapi.com/?&apikey=${API_KEY}`;
 
 const tempMovieData = [
   {
