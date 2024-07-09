@@ -4,53 +4,6 @@ import StarRating from "./StarRating";
 const API_KEY = import.meta.env.VITE_OMDB_API_KEY;
 const OMDB_URL = `https://www.omdbapi.com/?&apikey=${API_KEY}`;
 
-const tempMovieData = [
-  {
-    imdbID: "tt1375666",
-    Title: "Inception",
-    Year: "2010",
-    Poster:
-      "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg",
-  },
-  {
-    imdbID: "tt0133093",
-    Title: "The Matrix",
-    Year: "1999",
-    Poster:
-      "https://m.media-amazon.com/images/M/MV5BNzQzOTk3OTAtNDQ0Zi00ZTVkLWI0MTEtMDllZjNkYzNjNTc4L2ltYWdlXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_SX300.jpg",
-  },
-  {
-    imdbID: "tt6751668",
-    Title: "Parasite",
-    Year: "2019",
-    Poster:
-      "https://m.media-amazon.com/images/M/MV5BYWZjMjk3ZTItODQ2ZC00NTY5LWE0ZDYtZTI3MjcwN2Q5NTVkXkEyXkFqcGdeQXVyODk4OTc3MTY@._V1_SX300.jpg",
-  },
-];
-
-const tempWatchedData = [
-  {
-    imdbID: "tt1375666",
-    Title: "Inception",
-    Year: "2010",
-    Poster:
-      "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg",
-    Runtime: 148,
-    imdbRating: 8.8,
-    userRating: 10,
-  },
-  {
-    imdbID: "tt0088763",
-    Title: "Back to the Future",
-    Year: "1985",
-    Poster:
-      "https://m.media-amazon.com/images/M/MV5BZmU0M2Y1OGUtZjIxNi00ZjBkLTg1MjgtOWIyNThiZWIwYjRiXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_SX300.jpg",
-    runtime: 116,
-    imdbRating: 8.5,
-    userRating: 9,
-  },
-];
-
 const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
 
@@ -74,32 +27,35 @@ function Logo() {
 
 function Search({ query, setQuery }) {
   return (
-    <input
-      className="search"
-      type="text"
-      placeholder="Search movies..."
-      value={query}
-      onChange={(e) => setQuery(e.target.value)}
-      onFocus={(e) => {
-        setQuery("");
-      }}
-    />
+    <>
+      <input
+        className="search"
+        type="text"
+        placeholder="Search movies..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onFocus={(e) => {
+          setQuery("");
+        }}
+      />
+    </>
   );
 }
 
-function NumResult({ watched }) {
+function NumResult({ results }) {
   return (
     <p className="num-results">
-      Found <strong>{watched?.length || 0}</strong> results
+      Found <strong>{results?.length || 0}</strong> results
     </p>
   );
 }
 
 export default function App() {
-  const [query, setQuery] = useState("kill bill");
-  const [movies, setMovies] = useState(tempMovieData);
+  const [query, setQuery] = useState("interstellar");
+  const [movies, setMovies] = useState([]);
   const [watched, setWatched] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const [error, setError] = useState("");
 
   const handleCloseMovie = () => {
     setSelectedId(null);
@@ -124,24 +80,50 @@ export default function App() {
   };
 
   useEffect(() => {
+    // clean up
+    const controller = new AbortController();
+
     async function fetchMovies() {
-      const res = await fetch(`${OMDB_URL}&s=${query}`);
-      const data = await res.json();
-      setMovies(data.Search);
+      try {
+        setError("");
+
+        const res = await fetch(`${OMDB_URL}&s=${query}`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error("Something went wrong with getting movies.");
+        }
+
+        const data = await res.json();
+        setMovies(data.Search);
+        setError("");
+      } catch (err) {
+        console.error(err);
+        console.log("set error to error message");
+      } finally {
+        console.log("set loading to false");
+      }
     }
 
     if (query.length < 3) {
       setMovies([]);
       return;
     }
+
+    handleCloseMovie();
     fetchMovies();
+
+    return function () {
+      controller.abort();
+    };
   }, [query]);
 
   return (
     <>
       <NavBar>
         <Search query={query} setQuery={setQuery} />
-        <NumResult watched={movies} />
+        <NumResult results={movies} />
       </NavBar>
       <Main>
         <Box>
@@ -212,7 +194,7 @@ function Summary({ watched }) {
       const runtime = movie.Runtime.split(" ")[0];
       return parseInt(runtime);
     })
-  );
+  ).toFixed(0);
 
   return (
     <div className="summary">
@@ -220,7 +202,9 @@ function Summary({ watched }) {
       <div>
         <p>
           <span>#️⃣</span>
-          <span>{watched?.length || 0} movies</span>
+          <span>
+            {watched?.length || 0} movie{watched?.length > 1 ? "s" : ""}
+          </span>
         </p>
         <p>
           <span>⭐️</span>
@@ -326,6 +310,31 @@ function SelectedMovie({
       setRating(watchedUserRating);
     }
   }, [selectedId]);
+
+  useEffect(() => {
+    document.title = `${movie.Title} - usePopcorn`;
+
+    // clean up function
+    return () => {
+      document.title = "usePopcorn";
+    };
+  }, [movie]);
+
+  useEffect(() => {
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Escape") {
+        onClose();
+      }
+    });
+
+    return () => {
+      document.removeEventListener("keydown", (e) => {
+        if (e.code === "Escape") {
+          onClose();
+        }
+      });
+    };
+  }, [onClose]);
 
   return (
     <div className="details">
