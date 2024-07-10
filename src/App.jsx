@@ -53,7 +53,10 @@ function NumResult({ results }) {
 export default function App() {
   const [query, setQuery] = useState("interstellar");
   const [movies, setMovies] = useState([]);
-  const [watched, setWatched] = useState([]);
+  const [watched, setWatched] = useState(function () {
+    const storedValue = localStorage.getItem("watched");
+    return JSON.parse(storedValue);
+  });
   const [selectedId, setSelectedId] = useState(null);
   const [error, setError] = useState("");
 
@@ -78,6 +81,10 @@ export default function App() {
       return watched.filter((m) => m.imdbID !== movie.imdbID);
     });
   };
+
+  useEffect(() => {
+    localStorage.setItem("watched", JSON.stringify(watched));
+  }, [watched]);
 
   useEffect(() => {
     // clean up
