@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import StarRating from "./StarRating";
 
 const API_KEY = import.meta.env.VITE_OMDB_API_KEY;
@@ -26,9 +26,27 @@ function Logo() {
 }
 
 function Search({ query, setQuery }) {
+  const inputEl = useRef(null);
+
+  useEffect(() => {
+    // inputEl.current.focus();
+    function callback(e) {
+      if (e.code === "Enter") {
+        inputEl.current.focus();
+      }
+    }
+
+    document.addEventListener("keydown", callback);
+
+    return () => {
+      document.removeEventListener("keydown", callback);
+    };
+  }, []);
+
   return (
     <>
       <input
+        ref={inputEl}
         className="search"
         type="text"
         placeholder="Search movies..."
@@ -55,7 +73,8 @@ export default function App() {
   const [movies, setMovies] = useState([]);
   const [watched, setWatched] = useState(function () {
     const storedValue = localStorage.getItem("watched");
-    return JSON.parse(storedValue);
+    console.log("storedValue", storedValue);
+    return JSON.parse(storedValue) || [];
   });
   const [selectedId, setSelectedId] = useState(null);
   const [error, setError] = useState("");
